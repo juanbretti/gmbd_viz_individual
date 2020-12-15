@@ -1,0 +1,12 @@
+name: gbmd_viz_final
+title: gbmd_viz_final
+username:
+account: juanbretti
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 3403931
+bundleId: 3993969
+url: https://juanbretti.shinyapps.io/gbmd_viz_final/
+when: 1608069971.28977
+asMultiple: FALSE
+asStatic: FALSE
