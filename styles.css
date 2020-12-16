@@ -1,0 +1,65 @@
+div.map_uppper {
+    position: fixed;
+    top: 50px;
+    left: 0;
+    right: 25%;
+    bottom: 50%;
+    overflow: hidden;
+    padding: 0;
+}
+
+.leaflet-heatmap-layer {
+    opacity: .5;
+    background-color: white !important;
+}
+
+/* Position and style citation */
+#cite {
+    position: absolute;
+    bottom: 10px;
+    left: 10px;
+    font-size: 12px;
+}
+
+div.selection_plot {
+    position: fixed;
+    top: 50px;
+    left: 75%;
+    right: 0;
+    bottom: 50%;
+    overflow: hidden;
+    padding: 20px;
+}
+
+div.neighbors_table_wide {
+    position: fixed;
+    top: 50%;
+    left: 0;
+    right: 50%;
+    bottom: 0;
+    overflow: hidden;
+    padding: 20px;
+}
+
+div.neighbors_plot {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    right: 0;
+    bottom: 0;
+    overflow: hidden;
+    padding: 20px;
+}
+
+/* Customize fonts */
+body, label, input, button, select { 
+    font-family: 'Helvetica Neue', Helvetica;
+    font-weight: 200;
+}
+h1, h2, h3, h4 { font-weight: 400; }
+
+#controls {
+    background-color: white;
+    padding: 0px 20px 20px 20px;
+    cursor: move;
+}

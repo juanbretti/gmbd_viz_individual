@@ -1,6 +1,6 @@
 ---
 title: "ASSIGNMENT #4: FINAL PROJECT"
-author: "Addison Playo & Juan Pedro Bretti Mandarano"
+author: "Addison Pelayo & Juan Pedro Bretti Mandarano"
 date: "JAN/07/2021"
 output:
   html_document:
@@ -33,8 +33,7 @@ library(readxl)
 Read the raw data from the CSV file.
 
 ```{r}
-df_data <- read_excel(path='source/WDIEXCEL.xlsx', sheet='Data')
-df_country <- read_excel(path='source/WDIEXCEL.xlsx', sheet='Country')
+df_data <- read_csv(unz("source/WDI_csv.zip", "WDIData.csv"))
 ```
 
 ```{r}
@@ -46,19 +45,15 @@ df_data <- df_data %>%
 ## Quick EDA
 
 ```{r}
-skim(df_data)
-```
-
-```{r}
-skim(df_country)
+# skim(df_data)
 ```
 
 ```{r}
 table(df_data['Indicator Name']) %>% 
   as.data.frame() %>% 
   arrange(desc(Freq)) %>% 
-  filter(str_detect(Var1, regex('child', ignore_case = T))) %>% 
-  filter(str_detect(Var1, regex('school', ignore_case = T)))
+  filter(str_detect(Var1, regex('Education', ignore_case = T)))
+  # filter(str_detect(Var1, regex('school', ignore_case = T)))
 ```
 
 
