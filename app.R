@@ -29,19 +29,12 @@ df_data <- read_csv(unz("source/WDI_csv.zip", "WDIData.csv"))
 df_country <- read_csv(unz("source/WDI_csv.zip", "WDICountry.csv"))
 df_country_lat_lon <- read_tsv('source/country latitude longitude name.tsv')
 
-indicators_ <- c('Poverty headcount ratio at national poverty lines (% of population)',
-    'People using safely managed drinking water services (% of population)',
-    'Community health workers (per 1,000 people)',
-    'People using at least basic sanitation services (% of population)',
-    'Literacy rate, adult total (% of people ages 15 and above)',
-    'Net migration',
-    'Public private partnerships investment in transport (current US$)')
-
-columns_ <- c('Country Name', 'Indicator Name', 'Year', 'Value', 'Region', 'Income Group', 'latitude', 'longitude')
+indicators_ <- c('SI.POV.NAHC', 'SH.XPD.GHED.GD.ZS', 'SH.H2O.BASW.ZS', 'SH.STA.BASS.ZS', 'SH.TBS.INCD', 'SH.MLR.INCD.P3', 'SH.HIV.INCD.TL.P3')
+columns_ <- c('Country Name', 'Indicator Name', 'Indicator Code', 'Year', 'Value', 'Region', 'Income Group', 'latitude', 'longitude')
 
 # Prepare data ----
 df_data2 <- df_data %>% 
-    filter(`Indicator Name` %in% indicators_) %>% 
+    filter(`Indicator Code` %in% indicators_) %>% 
     pivot_longer(starts_with(c('1', '2')), names_to='Year', values_to='Value') %>% 
     filter(!is.na(`Value`)) %>% 
     mutate(`Year` = as.numeric(`Year`)) %>% 
@@ -49,9 +42,12 @@ df_data2 <- df_data %>%
     inner_join(df_country_lat_lon, by=c('2-alpha code'='country')) %>% 
     select(!!columns_)
 
+# Memory cleanup
+rm(list=c('df_data', 'df_country', 'df_country_lat_lon'))
+
 # Positions for map ----
 data_position <- df_data2 %>% 
-    filter(`Indicator Name` == 'Net migration') %>% 
+    filter(`Indicator Code` == "SI.POV.NAHC") %>% 
     group_by(`Country Name`) %>%
     top_n(n=1, wt=`Year`)
 
@@ -114,7 +110,25 @@ plot_bottom_right_div <- function(country_clicked, country_neig, data = df_data2
     return(plot)
 }
 
-# Creating the spatial dataset ----
+# Table ----
+country_table <- function(country_click, country_neig, range_min, range_max, data = df_data2) {
+    
+    country_list <- c(country_click, country_neig$neig_stid)
+    
+    data_production <- data %>%
+        filter(`Country Name` %in% country_list,
+               between(`Year`, range_min, range_max)) %>%
+        group_by(`Country Name`, `Indicator Name`) %>% 
+        summarise(`Value`=mean(`Value`)) %>% 
+        pivot_wider(names_from = `Indicator Name`, values_from = `Value`)
+    
+    return(list(
+        data_wide = data_production,
+        data_long = data_production
+    ))
+}
+
+# Spatial ----
 #CRS
 CRSLatLon<-CRS("+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs ") #"+init=epsg:4326"
 #http://spatialreference.org/ref/sr-org/7483/, WGS84 Web Mercator (Auxiliary Sphere) (Google, Spotfire)
@@ -162,26 +176,6 @@ country_distance <- function(spdf, country, distance) {
         neig_data = neig_data
     ))
 }
-
-# Table for presentation ----
-country_table <- function(country_click, country_neig, range_min, range_max, data = df_data2) {
-
-    country_list <- c(country_click, country_neig$neig_stid)
-    
-    data_production <- data %>%
-        filter(`Country Name` %in% country_list,
-               between(`Year`, range_min, range_max)) %>%
-        group_by(`Country Name`, `Indicator Name`) %>% 
-        summarise(`Value`=mean(`Value`)) %>% 
-        pivot_wider(names_from = `Indicator Name`, values_from = `Value`)
-    
-    return(list(
-        data_wide = data_production,
-        data_long = data_production
-    ))
-}
-
-## App ----
 
 ## UI ----
 ui <- fluidPage(
