@@ -5,9 +5,9 @@ account: juanbretti
 server: shinyapps.io
 hostUrl: https://api.shinyapps.io/v1
 appId: 3409704
-bundleId: 3998584
+bundleId: 4023821
 url: https://juanbretti.shinyapps.io/gmbd_viz_pairs/
-when: 1608153473.74358
+when: 1608758405.03571
 asMultiple: FALSE
 asStatic: FALSE
-ignoredFiles: .RData|trials.Rmd|source/countries.csv ?-? Dataset Publishing Language ?-? Google Developers.url|source/World Development Indicators (WDI) - Data Catalog.url|r_class
+ignoredFiles: .RData|trials.Rmd|source/World Development Indicators (WDI) - Data Catalog.url

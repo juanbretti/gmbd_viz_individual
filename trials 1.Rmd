@@ -1,0 +1,151 @@
+---
+title: "ASSIGNMENT #4: FINAL PROJECT"
+author: "Juan Pedro Bretti Mandarano"
+date: "JAN/07/2021"
+output:
+  html_document:
+  code_folding: show
+toc: true
+toc_float:
+  collapsed: false
+---
+  
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Start
+
+Set the folder (path) that contains this R file as the working directory
+
+```{r}
+library(tidyverse)
+library(skimr)
+library(ggpmisc)
+library(lubridate)
+library(ggridges)
+library(ggalluvial)
+library(readxl)
+```
+
+## Load data
+
+Read the raw data from the CSV file.
+
+```{r}
+df_data <- read_csv(unz("source/WDI_csv.zip", "WDIData.csv"))
+df_country <- read_csv(unz("source/WDI_csv.zip", "WDICountry.csv"))
+df_country_lat_lon <- read_tsv('source/country latitude longitude name.tsv')
+```
+
+```{r}
+indicators_ <- c('NY.GDP.MKTP.KD.ZG', 'NY.GDP.PCAP.KD.ZG', 'NY.GDP.PCAP.PP.CD', 'NY.GDP.PCAP.PP.KD', 'SE.PRM.OENR.ZS', 'SE.PRM.OENR.FE.ZS', 'SE.PRM.OENR.MA.ZS', 'SE.PRM.REPT.FE.ZS', 'SE.PRM.REPT.MA.ZS', 'SE.PRM.REPT.ZS', 'SE.PRM.GINT.FE.ZS', 'SE.PRM.GINT.MA.ZS', 'SE.PRM.GINT.ZS', 'SE.PRM.NINT.FE.ZS', 'SE.PRM.NINT.MA.ZS', 'SE.PRM.NINT.ZS', 'SE.PRM.PRS5.FE.ZS', 'SE.PRM.PRS5.MA.ZS', 'SE.PRM.PRS5.ZS', 'SE.PRM.PRSL.FE.ZS', 'SE.PRM.PRSL.MA.ZS', 'SE.PRM.PRSL.ZS', 'SE.PRM.UNER.FE.ZS', 'SE.PRM.UNER.MA.ZS', 'SE.PRM.UNER.ZS', 'SE.SEC.PROG.FE.ZS', 'SE.SEC.PROG.MA.ZS', 'SE.SEC.PROG.ZS', 'SE.XPD.PRIM.PC.ZS', 'SE.XPD.SECO.PC.ZS', 'SE.XPD.TERT.PC.ZS', 'SE.XPD.TOTL.GB.ZS', 'SE.XPD.TOTL.GD.ZS', 'SI.POV.GINI', 'SL.UEM.ADVN.FE.ZS', 'SL.UEM.ADVN.MA.ZS', 'SL.UEM.ADVN.ZS', 'SL.UEM.BASC.FE.ZS', 'SL.UEM.BASC.MA.ZS', 'SL.UEM.BASC.ZS', 'SL.UEM.INTM.FE.ZS', 'SL.UEM.INTM.MA.ZS', 'SL.UEM.INTM.ZS')
+columns_ <- c('Country Name', 'Indicator Name', 'Indicator Code', 'Year', 'Value', 'Region', 'Income Group', 'latitude', 'longitude')
+
+# Prepare data ----
+df_data2 <- df_data %>% 
+    # filter(`Indicator Code` %in% indicators_) %>%
+    pivot_longer(starts_with(c('1', '2')), names_to='Year', values_to='Value') %>% 
+    filter(!is.na(`Value`)) %>% 
+    mutate(`Year` = as.numeric(`Year`)) %>% 
+    inner_join(df_country, by='Country Code') %>% 
+    inner_join(df_country_lat_lon, by=c('2-alpha code'='country')) %>% 
+    select(!!columns_)
+```
+
+```{r}
+# columns3_ <- c('Indicator Code', 'Year', 'Value')
+# 
+# df_data3 <- df_data2 %>% 
+#   select(!!columns3_) %>% 
+#   pivot_wider(names_from=`Indicator Code`, values_from=`Value`, values_fn = mean) %>% 
+#   filter(!is.na(`SE.PRM.NENR`)) %>% 
+#   select_if(function(x) any(!is.na(x)))
+
+# library(caret)
+# require(randomForest)
+# 
+# mod.mt <- train(
+#   y = unlist(dplyr::select(df_data3, `SE.PRM.NENR`)),
+#   x = as.data.frame(dplyr::select(df_data3, -`SE.PRM.NENR`, -`Year`)),
+#   method = "rpart", # decision tree
+#   tuneLength = 1,
+#   preProcess = "medianImpute"
+#   )
+
+# varImp(mod.mt)
+```
+
+## Quick EDA
+
+```{r}
+# skim(df_data)
+```
+
+```{r}
+table(df_data['Indicator Code']) %>% 
+  as.data.frame() %>% 
+  arrange(desc(Freq)) %>% 
+  filter(str_detect(Var1, regex('SE.PRM', ignore_case = T)))
+  # filter(str_detect(Var1, regex('school', ignore_case = T)))
+```
+
+
+```{r}
+df_data %>% 
+  filter(`Indicator Name` %in% c('Children out of school, primary', 'Children out of school, primary, female', 'Children out of school, primary, male')) %>% 
+  group_by(`Indicator Name`, `Year`) %>% 
+  summarise(`Value`=mean(`Value`)) %>% 
+  ggplot() +
+  geom_point(aes(x=Year, y=Value, color=`Indicator Name`))
+```
+
+
+https://www.datanovia.com/en/blog/gganimate-how-to-create-plots-with-beautiful-animation-in-r/
+
+https://datatopics.worldbank.org/sdgatlas/goal-4-quality-education/
+
+https://stackoverflow.com/questions/50274879/caret-preprocess-medianimpute-yet-still-missing-values-error
+
+
+```{r}
+columns_ <- c('Country Name', 'Indicator Code', 'Year', 'Value')
+country_ <- c('United States', 'Argentina', 'Angola', 'Colombia')
+
+df_data2 %>% 
+  dplyr::select(!!columns_) %>% 
+  filter(`Country Name` %in% country_) %>% 
+  pivot_wider(names_from=`Indicator Code`, values_from=`Value`) %>% 
+  ggplot() +
+    aes(y=`IT.MLT.MAIN.P2`, x=`Year`, color=`Country Name`) +
+    geom_line()
+```
+
+```{r}
+df_data2 %>% 
+  group_by(`Indicator Code`, `Indicator Name`, `Country Name`) %>% 
+  tally() %>% 
+  group_by(`Indicator Code`, `Indicator Name`) %>% 
+  summarise(count_=n(),
+            max_=max(n),
+            mean_=mean(n),
+            min_=min(n)) %>% 
+  arrange(desc(`mean_`))
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

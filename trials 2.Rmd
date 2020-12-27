@@ -1,0 +1,297 @@
+---
+title: "ASSIGNMENT #4: FINAL PROJECT"
+author: "Juan Pedro Bretti Mandarano"
+date: "JAN/07/2021"
+output:
+  html_document:
+  code_folding: show
+toc: true
+toc_float:
+  collapsed: false
+---
+  
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Start
+
+Set the folder (path) that contains this R file as the working directory
+
+```{r}
+library(tidyverse)
+library(skimr)
+library(ggpmisc)
+library(lubridate)
+library(ggridges)
+library(ggalluvial)
+library(readxl)
+```
+
+## Load data
+
+Read the raw data from the CSV file.
+
+```{r}
+df_data <- read_csv(unz("source/WDI_csv.zip", "WDIData.csv"))
+df_country <- read_csv(unz("source/WDI_csv.zip", "WDICountry.csv"))
+df_series <- read_csv(unz("source/WDI_csv.zip", "WDISeries.csv"))
+df_country_lat_lon <- read_tsv('source/country latitude longitude name.tsv')
+```
+
+```{r}
+indicators_ <- c('NY.GDP.MKTP.KD.ZG', 'NY.GDP.PCAP.KD.ZG', 'NY.GDP.PCAP.PP.CD', 'NY.GDP.PCAP.PP.KD', 'SE.PRM.OENR.ZS', 'SE.PRM.OENR.FE.ZS', 'SE.PRM.OENR.MA.ZS', 'SE.PRM.REPT.FE.ZS', 'SE.PRM.REPT.MA.ZS', 'SE.PRM.REPT.ZS', 'SE.PRM.GINT.FE.ZS', 'SE.PRM.GINT.MA.ZS', 'SE.PRM.GINT.ZS', 'SE.PRM.NINT.FE.ZS', 'SE.PRM.NINT.MA.ZS', 'SE.PRM.NINT.ZS', 'SE.PRM.PRS5.FE.ZS', 'SE.PRM.PRS5.MA.ZS', 'SE.PRM.PRS5.ZS', 'SE.PRM.PRSL.FE.ZS', 'SE.PRM.PRSL.MA.ZS', 'SE.PRM.PRSL.ZS', 'SE.PRM.UNER.FE.ZS', 'SE.PRM.UNER.MA.ZS', 'SE.PRM.UNER.ZS', 'SE.SEC.PROG.FE.ZS', 'SE.SEC.PROG.MA.ZS', 'SE.SEC.PROG.ZS', 'SE.XPD.PRIM.PC.ZS', 'SE.XPD.SECO.PC.ZS', 'SE.XPD.TERT.PC.ZS', 'SE.XPD.TOTL.GB.ZS', 'SE.XPD.TOTL.GD.ZS', 'SI.POV.GINI', 'SL.UEM.ADVN.FE.ZS', 'SL.UEM.ADVN.MA.ZS', 'SL.UEM.ADVN.ZS', 'SL.UEM.BASC.FE.ZS', 'SL.UEM.BASC.MA.ZS', 'SL.UEM.BASC.ZS', 'SL.UEM.INTM.FE.ZS', 'SL.UEM.INTM.MA.ZS', 'SL.UEM.INTM.ZS')
+columns_ <- c('Country Name', 'Topic', 'Indicator Name', 'Indicator Code', 'Year', 'Value', 'Region', 'Income Group', 'latitude', 'longitude')
+
+# Prepare data ----
+df_data2 <- df_data %>% 
+    # filter(`Indicator Code` %in% indicators_) %>%
+    pivot_longer(starts_with(c('1', '2')), names_to='Year', values_to='Value') %>% 
+    filter(!is.na(`Value`)) %>% 
+    mutate(`Year` = as.numeric(`Year`)) %>% 
+    inner_join(df_country, by='Country Code') %>% 
+    inner_join(df_country_lat_lon, by=c('2-alpha code'='country')) %>% 
+    inner_join(df_series, by=c('Indicator Code'='Series Code')) %>% 
+    rename(`Indicator Name`='Indicator Name.x') %>% 
+    select(!!columns_)
+```
+
+https://www.datanovia.com/en/blog/gganimate-how-to-create-plots-with-beautiful-animation-in-r/
+
+https://datatopics.worldbank.org/sdgatlas/goal-4-quality-education/
+
+https://stackoverflow.com/questions/50274879/caret-preprocess-medianimpute-yet-still-missing-values-error
+
+
+```{r}
+posible_data <- df_data2 %>% 
+  group_by(`Topic`, `Indicator Code`, `Indicator Name`, `Country Name`) %>% 
+  tally() %>% 
+  group_by(`Topic`, `Indicator Code`, `Indicator Name`) %>% 
+  summarise(count_=n(),
+            max_=max(n),
+            mean_=mean(n),
+            min_=min(n)) %>% 
+  arrange(desc(`mean_`))
+
+posible_data
+```
+
+```{r}
+columns_ <- c('Indicator Code', 'Year', 'Value')
+# ranges_ <- c('SP.POP.0014.FE.IN', 'SP.POP.0014.MA.IN', 'SP.POP.1564.FE.IN', 'SP.POP.1564.MA.IN', 'SP.POP.65UP.FE.IN', 'SP.POP.65UP.MA.IN')
+ranges_ <- c('SP.POP.0014.TO', 'SP.POP.1564.TO', 'SP.POP.65UP.TO')
+# country_ <- 'Argentina'
+country_ <- 'United States'
+
+df_data3 <- df_data2 %>% 
+  filter(`Country Name` == country_) %>% 
+  filter(`Indicator Code` %in% ranges_) %>% 
+  dplyr::select(!!columns_) %>% 
+  rename(`Age range`=`Indicator Code`) %>% 
+  group_by(`Age range`, `Year`) %>% 
+  summarise(sum_=sum(`Value`)) %>% 
+  group_by(`Year`) %>% 
+  mutate(percentage_=sum_/sum(sum_)) %>% 
+  arrange(`Year`)
+
+data_first <- df_data3 %>% 
+  group_by(`Age range`) %>% 
+  top_n(-1, `Year`) %>% 
+  pull(percentage_) %>% 
+  cumsum(.)
+
+data_last <- df_data3 %>% 
+  group_by(`Age range`) %>% 
+  top_n(1, `Year`) %>% 
+  pull(percentage_) %>% 
+  cumsum(.)
+
+data_0014_change <- if(data_last[1]>=data_first[1]) {
+    paste0(', an increase of ', round(data_last[1]-data_first[1], 2)*100, '%')
+  } else {
+    paste0(', a decrease of ', abs(round(data_last[1]-data_first[1], 2)*100), '%')
+  }
+
+df_data3 <- df_data3 %>%
+mutate(`Age range`=recode_factor(`Age range`, `SP.POP.65UP.TO`='65 and up', `SP.POP.1564.TO`='15 to 65 years', `SP.POP.0014.TO`=paste0('0 to 14 years', data_0014_change)))
+
+data_last_df <- data.frame(x=max(df_data3$Year)-1, y=data_last-0.02, label=rev(levels(df_data3$`Age range`)))
+
+ggplot(df_data3) +
+  theme_minimal() +
+  geom_area(aes(y=`percentage_`, x=`Year`, fill=`Age range`), position='stack', alpha=0.6 , size=0) +
+  scale_y_continuous(labels = scales::percent_format(accuracy = 1L), breaks = data_first, sec.axis = sec_axis(~ ., breaks = data_last, labels = scales::percent_format(accuracy = 1L))) +
+  theme(axis.title.y=element_blank(), 
+        legend.position = "none",
+        panel.grid.major.y = element_blank(),
+        panel.grid.minor.y = element_blank(),
+        axis.line = element_line(),
+        axis.ticks = element_line()) +
+  geom_text(data = data_last_df, aes(x=x, y=y, label=label), hjust = 'right', vjust = 1) +
+  scale_fill_brewer(palette="Dark2", direction=-1) +
+  labs(title = "Population ranges",
+       subtitle = "Age ranges over time",
+       caption = "World Development Indicators (WDI) - Data Catalog")
+```
+
+## Este funciona ----
+https://color.adobe.com/search?q=green%20red
+
+```{r}
+# Case selector
+columns_ <- c('Indicator Code', 'Year', 'Value')
+ranges_ <- c('SP.POP.0014.TO.ZS', 'SP.POP.1564.TO.ZS', 'SP.POP.65UP.TO.ZS')
+range_base <- 'SP.POP.0014.TO.ZS'
+country_base <- 'Colombia'
+# country_base <- 'United States'
+colors_ <- c("#E86B0C", "#FFC800", "#0D9637")
+
+# Prepare data
+df_data3 <- df_data2 %>% 
+  filter(`Country Name` == country_base) %>% 
+  filter(`Indicator Code` %in% ranges_) %>% 
+  dplyr::select(!!columns_) %>% 
+  arrange(`Year`)
+
+data_first <- df_data3 %>% 
+  group_by(`Indicator Code`) %>% 
+  top_n(-1, `Year`)
+
+data_last <- df_data3 %>% 
+  group_by(`Indicator Code`) %>% 
+  top_n(1, `Year`)
+
+# Prepare the geom_text
+data_first_ <- data_first[data_first['Indicator Code'] == range_base, 'Value']
+data_last_ <- data_last[data_first['Indicator Code'] == range_base, 'Value']
+
+data_change <- if(data_last_>=data_first_) {
+    paste0(', an increase of ', round(data_last_-data_first_, 1), '%')
+  } else {
+    paste0(', a decrease of ', abs(round(data_last_-data_first_, 1)), '%')
+  }
+
+if (range_base == 'SP.POP.0014.TO.ZS') {
+  data_change_0014 = data_change
+  data_change_1564 = ""
+  data_change_65UP = ""
+} else if (range_base == 'SP.POP.1564.TO.ZS') {
+  data_change_0014 = ""
+  data_change_1564 = data_change
+  data_change_65UP = ""
+} else if (range_base == 'SP.POP.65UP.TO.ZS') {
+  data_change_0014 = ""
+  data_change_1564 = ""
+  data_change_65UP = data_change
+}
+
+df_data3 <- df_data3 %>%
+  mutate(`Indicator Code`=recode_factor(`Indicator Code`, 
+                                   `SP.POP.65UP.TO.ZS`=paste0('65 and up', data_change_65UP), 
+                                   `SP.POP.1564.TO.ZS`=paste0('15 to 64 years', data_change_1564), 
+                                   `SP.POP.0014.TO.ZS`=paste0('0 to 14 years', data_change_0014)))
+
+data_last_df <- data.frame(x=max(df_data3$Year)-1, y=data_last[, 'Value'], label=rev(levels(df_data3$`Indicator Code`)))
+
+# The plot
+ggplot(df_data3) +
+  theme_minimal() +
+  geom_area(aes(y=`Value`, x=`Year`, fill=`Indicator Code`), position='stack', alpha=0.8 , size=0) +
+  scale_y_continuous(breaks = cumsum(data_first[, 'Value'][[1]]), 
+                     labels = scales::percent_format(accuracy = 1L, scale = 1),
+                     sec.axis = sec_axis(~ ., 
+                                         breaks = cumsum(data_last[, 'Value'][[1]]),
+                                         labels = scales::percent_format(accuracy = 1L, scale = 1))) +
+  theme(axis.title.y=element_blank(), 
+        legend.position = "none",
+        panel.grid.major.y = element_blank(),
+        panel.grid.minor.y = element_blank(),
+        axis.line = element_line(),
+        axis.ticks = element_line()) +
+  geom_text(data = data_last_df, aes(x=x, y=cumsum(Value), label=label), hjust = 'right', vjust = 1) +
+  labs(title = paste0("Population in ", country_base),
+       subtitle = "Age ranges over time",
+       caption = "World Development Indicators (WDI): Data Catalog")+
+  scale_fill_manual(values = colors_)
+```
+
+
+```{r}
+# Case selector
+columns_ <- c('Country Name', 'Year', 'Value')
+range_base <- 'SP.POP.0014.TO.ZS'
+country_neigh <- c('Argentina', 'United States', 'Colombia', 'Peru', 'Mexico')
+country_base <- 'Colombia'
+colors_ <- c("#E86B0C", "#FFC800", "#0D9637")
+
+# Prepare data
+df_data3 <- df_data2 %>% 
+  filter(`Country Name` %in% country_neigh) %>% 
+  filter(`Indicator Code` == range_base) %>% 
+  dplyr::select(!!columns_) %>% 
+  mutate(`Country Name`=factor(`Country Name`, levels=country_neigh))
+
+df_data31 <- df_data3 %>% 
+  filter(`Country Name` == country_base)
+
+data_first <- df_data3 %>% 
+  group_by(`Country Name`) %>% 
+  top_n(-1, `Year`)
+
+data_last <- df_data3 %>% 
+  group_by(`Country Name`) %>% 
+  top_n(1, `Year`) %>% 
+  mutate(`Color`=`Country Name` == country_base)
+
+# Title
+if (range_base == 'SP.POP.0014.TO.ZS') {
+  plot_title = '0 to 14 years'
+  color_ <- colors_[3]
+} else if (range_base == 'SP.POP.1564.TO.ZS') {
+  plot_title = "15 to 64 years"
+  color_ <- colors_[2]
+} else if (range_base == 'SP.POP.65UP.TO.ZS') {
+  plot_title = "65 and up years"
+  color_ <- colors_[1]
+}
+
+# The plot
+ggplot(df_data3) +
+  theme_minimal() +
+  geom_line(aes(y=`Value`, x=`Year`, fill=`Country Name`), size=1, colour='black', alpha=0.3) +
+  geom_line(data=df_data31, aes(y=`Value`, x=`Year`, fill=`Country Name`), size=1.5, colour='red', alpha=0.8) +
+  scale_y_continuous(breaks = data_first[, 'Value'][[1]], 
+                     labels = scales::percent_format(accuracy = 1L, scale = 1),
+                     sec.axis = sec_axis(~ .,
+                                         breaks = data_last[, 'Value'][[1]],
+                                         labels = scales::percent_format(accuracy = 1L, scale = 1))) +
+  geom_text(data = data_last,
+            aes(x=`Year`+1, y=`Value`, label=`Country Name`, colour=`Color`),
+            hjust = 'left',
+            vjust = 0) +
+  labs(title = paste0("Age range for ", plot_title),
+       subtitle = "Neighbors countries over time",
+       caption = "World Development Indicators (WDI): Data Catalog") +
+  theme(axis.title.y=element_blank(), 
+      legend.position = "none",
+      panel.grid.major.y = element_blank(),
+      panel.grid.minor.y = element_blank(),
+      axis.line = element_line(),
+      axis.ticks = element_line()) +
+  xlim(min(df_data3$Year), max(df_data3$Year)+10) +
+  scale_color_manual(values = c("grey", 'red'))
+```
+
+
+```{r}
+data.frame(
+    Name = c('0 to 14 years', '15 to 64 years', '65 and up years'),
+    Indicator = c('SP.POP.0014.TO.ZS', 'SP.POP.1564.TO.ZS', 'SP.POP.65UP.TO.ZS')
+)
+```
+
+
+
+
+
