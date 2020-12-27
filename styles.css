@@ -31,11 +31,11 @@ div.plot_top_right_div {
     padding: 20px;
 }
 
-div.neighbors_table_wide {
+div.plot_bottom_left_div {
     position: fixed;
     top: 50%;
     left: 0;
-    right: 50%;
+    right: 500px;
     bottom: 0;
     overflow: hidden;
     padding: 20px;
@@ -44,7 +44,7 @@ div.neighbors_table_wide {
 div.plot_bottom_right_div {
     position: fixed;
     top: 50%;
-    left: 50%;
+    left: 600px;
     right: 0;
     bottom: 0;
     overflow: hidden;

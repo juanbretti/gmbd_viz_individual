@@ -141,8 +141,7 @@ plot_top_right_div <- function(country_clicked, age_rage, range_min, range_max, 
               axis.ticks = element_line()) +
         geom_text(data = data_last_df, aes(x=x, y=cumsum(Value), label=label), hjust = 'right', vjust = 1) +
         labs(title = paste0("Population in ", country_base),
-             subtitle = "Age ranges over time",
-             caption = "World Development Indicators (WDI): Data Catalog") +
+             subtitle = "Age ranges over time") +
         scale_fill_manual(values = rev(colors_))
 
     return(plot)
@@ -229,12 +228,58 @@ plot_bottom_right_div <- function(country_clicked, country_neig, age_rage, range
     return(plot)
 }
 
+plot_bottom_left_div <- function(country_click, country_neig, range_min, range_max, data = df_data2){
+    columns_ <- c('Country Name', 'Indicator Code', 'Year', 'Value')
+    indicator_ = c('SP.POP.0014.TO.ZS', 'SP.POP.65UP.TO.ZS', 'SP.POP.TOTL')
+    
+    country_list <- c(country_click, country_neig)
+    
+    # Prepare data
+    df_data3 <- data %>% 
+        filter(`Country Name` %in% country_list,
+               `Indicator Code` %in% indicator_,
+               between(`Year`, range_min, range_max)) %>% 
+        dplyr::select(!!columns_) %>% 
+        mutate(`Country Name`=factor(`Country Name`, levels=country_list),
+               `Color`=`Country Name`==country_click) %>% 
+        pivot_wider(names_from=`Indicator Code`, values_from=`Value`)
+    
+    # The plot
+    plot_ <- ggplot(df_data3, 
+                    aes(x=`SP.POP.0014.TO.ZS`, 
+                        y=`SP.POP.65UP.TO.ZS`, 
+                        size=`SP.POP.TOTL`/1e7, 
+                        group=`Country Name`, 
+                        colour=`Color`, 
+                        label=`Country Name`)) +
+        theme_minimal() +
+        geom_point(show.legend = FALSE, alpha = 0.7) +
+        transition_time(`Year`) +
+        geom_text(nudge_y=-1) +
+        scale_y_continuous(labels = scales::percent_format(accuracy = 1L, scale = 1)) +
+        scale_x_continuous(labels = scales::percent_format(accuracy = 1L, scale = 1)) +
+        labs(title = "Evolution of ages over time ",
+             subtitle = "Year: {round(frame_time, 0)}",
+             caption = "Point size proportional to total population",
+             x = "0 to 14 years", 
+             y = "65 and up years") +
+        theme(legend.position = "none",
+              panel.grid.major.y = element_blank(),
+              panel.grid.minor.y = element_blank(),
+              axis.line = element_line(),
+              axis.ticks = element_line()) +
+        scale_color_manual(values = c("grey", 'blue'))
+    
+    # Save the animation
+    anim_save("outfile.gif", plot_, nframes = 50, duration = 5, height=500, width=500)
+}
+
 # Table ----
 country_table <- function(country_click, country_neig, range_min, range_max, data = df_data2, data_age_range = df_age_range) {
     
     columns_ <- c('Country Name', 'Indicator Name', 'Value')
     
-    country_list <- c(country_click, country_neig$neig_stid)
+    country_list <- c(country_click, country_neig)
     
     table_ <- data %>%
         filter(`Country Name` %in% country_list,
@@ -243,7 +288,8 @@ country_table <- function(country_click, country_neig, range_min, range_max, dat
         dplyr::select(!!columns_) %>% 
         group_by(`Country Name`, `Indicator Name`) %>% 
         summarise(`Value`=mean(`Value`)) %>% 
-        pivot_wider(names_from = `Indicator Name`, values_from = `Value`)
+        pivot_wider(names_from = `Indicator Name`, values_from = `Value`) %>% 
+        mutate_at(vars(2:4), function(x) round(x, 2))
     
     return(table_)
 }
@@ -300,6 +346,60 @@ country_distance <- function(spdf, country, distance) {
 ## UI ----
 ui <- fluidPage(
     navbarPage("World Development Indicators", id = "nav",
+    tabPanel("Description",
+             br(),
+             h1('Evolution of age ranges'),
+             br(),
+             span('The following study allows the user to analysis the evolution of age ranges over time, across the world.'),
+             br(),
+             span('Compares a base country with the closest ones.'),
+             br(),
+             br(),
+             h3('Usage'),
+             span('Use the named tags at the very top of the page.'),
+             br(),
+             span("Start from the"),
+             tags$b("Map"),
+             span("tab, and select a country of reference."),
+             br(),
+             span('Use the filters on the right to limit the search and output data.'),
+             br(),
+             span('The first population of the plots, takes some computing power and time. Please be patience for the'),
+             tags$b("map"),
+             span(","),
+             tags$b("area plot"),
+             span(","),
+             tags$b("scatter plot"),
+             span(", and"),
+             tags$b("line plot"),
+             span("to complete"),
+             br(),
+             br(),
+             span("Use the"),
+             tags$b("Data"),
+             span("tab to list the numeric data inside the plots."),
+             br(),
+             span('Also, the countries listed are selectable. Selecting those, highlights at the map for easy localization.'),
+             br(),
+             br(),
+             span('The application used these indicators:'),
+             br(),
+             tags$ul(
+                tags$li("Population ages 0-14 (% of total population)"),
+                tags$li("Population ages 15-64 (% of total population)"),
+                tags$li("Population ages 65 and above (% of total population)"),
+                tags$li("Population, total")
+             ),
+             br(),
+             br(),
+             h3('Source of information'),
+             span("World Development Indicators (WDI): Data Catalog."),
+             br(),
+             span('More at '), 
+             tags$a(href="https://datacatalog.worldbank.org/dataset/world-development-indicators", "World Development Indicators"),
+             span('.'),
+             tags$div(id="cite", 'IE, GMBD, Intake 2020, Juan Pedro Bretti Mandarano')
+    ),
     tabPanel("Map",
             tags$head(includeCSS("styles.css")),
             div(class = "map_uppper", 
@@ -313,10 +413,9 @@ ui <- fluidPage(
             ),
             div(class = "plot_top_right_div", 
                 plotOutput("plot_top_right_div", height = '100%')
-                # imageOutput("plot1", width = 400, height = 300)
             ),
-            div(class = "neighbors_table_wide", 
-                DT::dataTableOutput(outputId = "neighbors_table_wide")
+            div(class = "plot_bottom_left_div", 
+                imageOutput("plot_bottom_left_div", width = 400, height = 300)
             ),
             div(class = "plot_bottom_right_div", 
                 plotOutput("plot_bottom_right_div", height = '100%')
@@ -326,7 +425,8 @@ ui <- fluidPage(
     tabPanel("Data",
              htmlOutput('selection_text'),
              br(),
-             DT::dataTableOutput(outputId = "country_table")
+             DT::dataTableOutput(outputId = "country_table"),
+             tags$div(id="cite", 'IE, GMBD, Intake 2020, Juan Pedro Bretti Mandarano')
     )
 ))
 
@@ -345,33 +445,6 @@ server <- function( input, output, session ){
                 group = 'data_base',
                 color = '#213C93')
     }) 
-
-    
-    output$plot1 <- renderImage({
-        # now make the animation
-        p <- ggplot(mtcars, aes(factor(cyl), mpg)) +
-            geom_boxplot() +
-            transition_states(
-                gear,
-                transition_length = 2,
-                state_length = 1
-            ) +
-            enter_fade() +
-            exit_shrink() +
-            ease_aes('sine-in-out')
-
-        # Save the animation
-        anim_save("outfile.gif", p)
-
-        # Return a list containing the filename
-        list(src = "outfile.gif",
-             contentType = "image/gif"
-             # width = 400,
-             # height = 300,
-             # alt = "This is alternate text"
-        )}, deleteFile = TRUE)
-    
-    
     
     # Check events over the map
     observeEvent(c(input$map_marker_click, input$distance, input$year_range, input$age_rage), ignoreNULL = FALSE, ignoreInit = TRUE, {
@@ -391,7 +464,7 @@ server <- function( input, output, session ){
                         opacity = 0.2,
                         group = 'lines') 
                 # Table with the list of neighbors
-                output$country_table <- DT::renderDataTable(country_table(map_$id, country_neig, input$year_range[1], input$year_range[2]), rownames = FALSE, width = 0.9)
+                output$country_table <- DT::renderDataTable(country_table(map_$id, country_neig$neig_stid, input$year_range[1], input$year_range[2]), rownames = FALSE, width = 0.9)
                 # Plot
                 output$plot_top_right_div <- renderPlot(plot_top_right_div(map_$id, input$age_rage, input$year_range[1], input$year_range[2]))
                 output$plot_bottom_right_div <- renderPlot(plot_bottom_right_div(map_$id, country_neig$neig_stid, input$age_rage, input$year_range[1], input$year_range[2]))
@@ -401,6 +474,10 @@ server <- function( input, output, session ){
                 str2 <- paste('From', '<strong>', input$year_range[1], '</strong>', 'to', '<strong>', input$year_range[2], '</strong>')
                 HTML(paste(str1, str2, sep = '<br/>'))
             })
+            output$plot_bottom_left_div <- renderImage({
+                plot_bottom_left_div(map_$id, country_neig$neig_stid, input$year_range[1], input$year_range[2])
+                list(src = "outfile.gif", contentType = "image/gif")}, 
+                deleteFile = TRUE)
         }
     })
     

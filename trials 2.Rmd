@@ -293,5 +293,56 @@ data.frame(
 
 
 
+```{r}
+df_age_range <- data.frame(
+    Name = c('0 to 14 years', '15 to 64 years', '65 and up years'),
+    Indicator = c('SP.POP.0014.TO.ZS', 'SP.POP.1564.TO.ZS', 'SP.POP.65UP.TO.ZS'),
+    Color = c("#0D9637", "#FFC800", "#E86B0C")
+)
+
+# library(ggrepel)
+
+columns_ <- c('Country Name', 'Indicator Code', 'Year', 'Value')
+country_neigh <- c('Argentina', 'United States', 'Colombia', 'Peru', 'Mexico')
+country_base <- 'Colombia'
+indicator_ = c('SP.POP.0014.TO.ZS', 'SP.POP.65UP.TO.ZS', 'SP.POP.TOTL')
+
+# Prepare data
+df_data3 <- df_data2 %>% 
+  filter(`Country Name` %in% country_neigh,
+         `Indicator Code` %in% indicator_) %>% 
+  dplyr::select(!!columns_) %>% 
+  mutate(`Country Name`=factor(`Country Name`, levels=country_neigh),
+         `Color`=`Country Name`==country_base) %>% 
+  pivot_wider(names_from=`Indicator Code`, values_from=`Value`)
+
+# The plot
+plot_ <- ggplot(df_data3, 
+                aes(x=`SP.POP.0014.TO.ZS`, 
+                    y=`SP.POP.65UP.TO.ZS`, 
+                    size=`SP.POP.TOTL`/1e7, 
+                    group=`Country Name`, 
+                    colour=`Color`, 
+                    label=`Country Name`)) +
+  theme_minimal() +
+  geom_point(show.legend = FALSE, alpha = 0.7) +
+  transition_time(`Year`) +
+  geom_text(nudge_y=-1) +
+  scale_y_continuous(labels = scales::percent_format(accuracy = 1L, scale = 1)) +
+  scale_x_continuous(labels = scales::percent_format(accuracy = 1L, scale = 1)) +
+  labs(title = "Evolution of ages over time ",
+       subtitle = "Year: {round(frame_time, 0)}",
+       caption = "Size proportional to total population",
+       x = "0 to 14 years", 
+       y = "65 and up years") +
+  theme(legend.position = "none",
+      panel.grid.major.y = element_blank(),
+      panel.grid.minor.y = element_blank(),
+      axis.line = element_line(),
+      axis.ticks = element_line()) +
+  scale_color_manual(values = c("grey", 'blue'))
+
+animate(plot_, nframes = 50, duration = 5)
+```
 
 
