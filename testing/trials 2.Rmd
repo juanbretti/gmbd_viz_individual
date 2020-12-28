@@ -242,7 +242,9 @@ data_first <- df_data3 %>%
 data_last <- df_data3 %>% 
   group_by(`Country Name`) %>% 
   top_n(1, `Year`) %>% 
-  mutate(`Color`=`Country Name` == country_base)
+  mutate(`Color`=`Country Name` == country_base,
+         `Label`=paste0(round(`Value`, 0), '% ', `Country Name`),
+         `Color Axis`=ifelse(`Country Name` == country_base, 'red', 'grey'))
 
 # Title
 if (range_base == 'SP.POP.0014.TO.ZS') {
@@ -282,6 +284,32 @@ ggplot(df_data3) +
   xlim(min(df_data3$Year), max(df_data3$Year)+10) +
   scale_color_manual(values = c("grey", 'red'))
 ```
+
+```{r}
+ggplot(df_data3) +
+  theme_minimal() +
+  geom_line(aes(y=`Value`, x=`Year`, fill=`Country Name`), size=1, colour='black', alpha=0.3) +
+  geom_line(data=df_data31, aes(y=`Value`, x=`Year`, fill=`Country Name`), size=1.5, colour='red', alpha=0.8) +
+  scale_y_continuous(breaks = data_first[, 'Value'][[1]], 
+                     labels = scales::percent_format(accuracy = 1L, scale = 1),
+                     sec.axis = sec_axis(~ .,
+                                         breaks = data_last[, 'Value'][[1]],
+                                         labels = data_last$`Label`)) +
+  labs(title = paste0("Age range for ", plot_title),
+       subtitle = "Neighbors countries over time",
+       caption = "World Development Indicators (WDI): Data Catalog") +
+  theme(axis.title.y=element_blank(),
+        axis.text.y = element_text(colour = data_last$`Color Axis`),
+      legend.position = "none",
+      panel.grid.major.y = element_blank(),
+      panel.grid.minor.y = element_blank(),
+      axis.line = element_line(),
+      axis.ticks = element_line()) +
+  scale_color_manual(values = c("grey", 'red'))
+```
+
+
+
 
 
 ```{r}

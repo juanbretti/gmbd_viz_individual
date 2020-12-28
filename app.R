@@ -172,6 +172,11 @@ plot_bottom_right_div <- function(country_clicked, country_neig, age_rage, range
     country_base <- country_clicked
     colors_ <- data_age_range$Color
     
+    # Title
+    df <- filter(data_age_range, `Indicator` == range_base)
+    plot_title <- df$Name
+    color_ <- df$Color
+    
     # Prepare data
     df_data3 <- data %>% 
         filter(`Country Name` %in% country_neigh,
@@ -192,12 +197,9 @@ plot_bottom_right_div <- function(country_clicked, country_neig, age_rage, range
     data_last <- df_data3 %>% 
         group_by(`Country Name`) %>% 
         top_n(1, `Year`) %>% 
-        mutate(`Color`=`Country Name` == country_base)
-    
-    # Title
-    df <- filter(data_age_range, `Indicator` == range_base)
-    plot_title <- df$Name
-    color_ <- df$Color
+        mutate(`Color`=`Country Name` == country_base,
+               `Label`=paste0(round(`Value`, 0), '% ', `Country Name`),
+               `Color Axis`=ifelse(`Country Name` == country_base, color_, 'grey'))
     
     # The plot
     plot <- ggplot(df_data3) +
@@ -208,21 +210,17 @@ plot_bottom_right_div <- function(country_clicked, country_neig, age_rage, range
                            labels = scales::percent_format(accuracy = 1L, scale = 1),
                            sec.axis = sec_axis(~ .,
                                                breaks = data_last[, 'Value'][[1]],
-                                               labels = scales::percent_format(accuracy = 1L, scale = 1))) +
-        geom_text(data = data_last,
-                  aes(x=`Year`+1, y=`Value`, label=`Country Name`, colour=`Color`),
-                  hjust = 'left',
-                  vjust = 0) +
+                                               labels = data_last$`Label`)) +
         labs(title = paste0("Age range for ", plot_title),
              subtitle = paste0(country_base, " and neighbors countries over time"),
              caption = "World Development Indicators (WDI): Data Catalog") +
         theme(axis.title.y=element_blank(), 
+              axis.text.y = element_text(colour = data_last$`Color Axis`),
               legend.position = "none",
               panel.grid.major.y = element_blank(),
               panel.grid.minor.y = element_blank(),
               axis.line = element_line(),
               axis.ticks = element_line()) +
-        xlim(min(df_data3$Year), max(df_data3$Year)+10) +
         scale_color_manual(values = c("grey", color_))
 
     return(plot)
@@ -364,7 +362,7 @@ ui <- fluidPage(
              br(),
              span('Use the filters on the right to limit the search and output data.'),
              br(),
-             span('The first population of the plots, takes some computing power and time. Please be patience for the'),
+             span('The first generation of the plots, takes some computing power and time. Please be patience for the'),
              tags$b("map"),
              span(","),
              tags$b("area plot"),
@@ -372,7 +370,7 @@ ui <- fluidPage(
              tags$b("scatter plot"),
              span(", and"),
              tags$b("line plot"),
-             span("to complete"),
+             span("to complete."),
              br(),
              br(),
              span("Use the"),

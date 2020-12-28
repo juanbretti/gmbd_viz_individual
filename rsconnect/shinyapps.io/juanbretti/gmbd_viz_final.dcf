@@ -1,0 +1,13 @@
+name: gmbd_viz_final
+title: gmbd_viz_final
+username:
+account: juanbretti
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 3433084
+bundleId: 4036369
+url: https://juanbretti.shinyapps.io/gmbd_viz_final/
+when: 1609186002.49979
+asMultiple: FALSE
+asStatic: FALSE
+ignoredFiles: .RData|trials 1.Rmd|trials 2.Rmd|source/countries.csv ?-? Dataset Publishing Language ?-? Google Developers.url|source/WDIEXCEL_v2.xlsx|source/World Development Indicators (WDI) - Data Catalog.url|testing
