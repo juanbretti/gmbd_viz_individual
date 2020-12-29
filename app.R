@@ -36,11 +36,17 @@ df_age_range <- data.frame(
     Color = c("#0D9637", "#FFC800", "#E86B0C")
 )
 
-columns_ <- c('Country Name', 'Indicator Name', 'Indicator Code', 'Year', 'Value', 'Region', 'Income Group', 'latitude', 'longitude')
+columns_ <- c('Country Name', 'Indicator Name', 'Indicator Code', 'Year', 'Value', 'latitude', 'longitude')
+
+age_range_pre <- 'SP.POP'
+age_range <- c("0004", "0509", "1014", "1519", "2024", "2529", "3034", "3539", "4044", "4549", "5054", "5559", "6064", "6569", "7074", "7579", "80UP")
+age_range_gender <- c('FE', 'MA')
+age_range_post <- '5Y'
+indicators_ <- apply(expand.grid(age_range_pre, age_range, age_range_gender, age_range_post), 1, function(x) paste(x, collapse="."))
+
+indicators_ <- c(indicators_, df_age_range$Indicator, 'SP.DYN.CBRT.IN', 'SP.DYN.CDRT.IN', 'SP.POP.TOTL', 'SP.POP.TOTL.FE.IN', 'SP.POP.TOTL.MA.IN', 'SP.POP.GROW')
 
 # Prepare data ----
-
-indicators_ <- c(df_age_range$Indicator, 'SP.POP.TOTL')
 
 df_data2 <- df_data %>% 
     filter(`Indicator Code` %in% indicators_) %>% 
@@ -292,6 +298,127 @@ country_table <- function(country_click, country_neig, range_min, range_max, dat
     return(table_)
 }
 
+# Pyramid plots ----
+
+plot_pyramid <- function(country_click, country_neig, range_min, range_max, top_, data = df_data2) {
+    # https://en.wikipedia.org/wiki/Demographic_transition#/media/File:Demographic-TransitionOWID.png
+    
+    # Parameters
+    country_list_ <- c(country_click, country_neig)
+    
+    data00 <- data %>% 
+        filter(`Country Name` %in% country_list_,
+               between(`Year`, range_min, range_max))
+    
+    # Top
+    df_top <- data00 %>% 
+        filter(`Indicator Code` == 'SP.POP.TOTL') %>% 
+        group_by(`Country Name`) %>% 
+        summarise(Total=sum(`Value`)) %>% 
+        top_n(top_, Total) %>%
+        arrange(desc(Total)) %>% 
+        pull(`Country Name`)
+    
+    df_top <- unique(c(country_click, df_top))
+    
+    # Prepare data
+    data0 <- data00 %>% 
+        mutate(top_country=ifelse(`Country Name` %in% df_top, `Country Name`, 'Rest of neighboards')) %>% 
+        mutate(top_country=factor(top_country, levels=c(df_top, 'Rest of neighboards')))
+    
+    # Plot 1
+    data1 <- data0 %>% 
+        filter(`Indicator Code` %in% c('SP.DYN.CBRT.IN', 'SP.DYN.CDRT.IN')) %>% 
+        group_by(`Year`, `Indicator Code`, `top_country`) %>% 
+        summarise(`Value`=mean(`Value`))
+    
+    data11 <- data1 %>% 
+        pivot_wider(names_from = `Indicator Code`, values_from=`Value`)
+    
+    data2 <- data0 %>% 
+        filter(`Indicator Code` == 'SP.POP.TOTL') %>%
+        group_by(`Year`, `Indicator Code`, `top_country`) %>% 
+        summarise(`Value`=mean(`Value`))
+    
+    coeff <- max(data2$Value)/max(data1$Value)/1e6
+    
+    plot_1 <- ggplot() +
+        geom_area(data=data2, aes(x=`Year`, y=`Value`/coeff/1e6, fill=`Indicator Code`), size=2, alpha = 0.3) +
+        geom_line(data=data1, aes(x=`Year`, y=`Value`, color=`Indicator Code`), size=1, alpha = 0.6) +
+        geom_ribbon(data=data11, aes(x=`Year`, y=`SP.DYN.CBRT.IN`, ymin=`SP.DYN.CDRT.IN`, ymax=`SP.DYN.CBRT.IN`), fill="blue", alpha=0.2) +
+        scale_y_continuous(
+            name = "Ratio [%]",
+            labels = scales::percent_format(accuracy = 1L, scale = 1),
+            sec.axis = sec_axis(~.*coeff, name="Population [Million]")
+        ) +
+        facet_wrap(vars(`top_country`)) +
+        theme_minimal() +
+        labs(title = "Birth and death rates",
+             subtitle = paste0(country_click, " and neighbors countries over time")) +
+        theme(axis.title.y=element_blank(), 
+              legend.position = "bottom",
+              panel.grid.major.y = element_blank(),
+              panel.grid.minor.y = element_blank(),
+              axis.line = element_line(),
+              axis.ticks = element_line()) +
+        scale_color_manual(values=c('darkgreen', 'darkblue'), name =element_blank(), labels = c("Birth rate (per 1,000 people)", "Death rate (per 1,000 people)")) +
+        scale_fill_manual(values=c('orange'), name=element_blank(), labels="Total population [Million]")
+    
+    # Plot 2
+    # Indicators
+    age_range_pre <- 'SP.POP'
+    age_range <- data.frame(Number = c("0004", "0509", "1014", "1519", "2024", "2529", "3034", "3539", "4044", "4549", "5054", "5559", "6064", "6569", "7074", "7579", "80UP"),
+                            Axis_Label = c("", "", "", "15 years", "", "", "", "", "", "", "", "55 years", "", "", "", "", "80 and up"))
+    age_range_gender <- c('FE', 'MA')
+    age_range_post <- '5Y'
+    indicators_ <- apply(expand.grid(age_range_pre, age_range$Number, age_range_gender, age_range_post), 1, function(x) paste(x, collapse="."))
+    
+    indicators_FE <- data.frame(Label=apply(expand.grid(age_range_pre, age_range$Number, 'FE', age_range_post), 1, function(x) paste(x, collapse=".")),
+                                Label_Index=factor(age_range$Number, levels=age_range$Number),
+                                Label_Text=age_range$Axis_Label,
+                                Gender='Female')
+    indicators_MA <- data.frame(Label=apply(expand.grid(age_range_pre, age_range$Number, 'MA', age_range_post), 1, function(x) paste(x, collapse=".")),
+                                Label_Index=factor(age_range$Number, levels=age_range$Number),
+                                Label_Text=age_range$Axis_Label,
+                                Gender='Male')
+    
+    indicators_FEMA <- bind_rows(indicators_FE, indicators_MA) %>% 
+        mutate(`Gender`=factor(`Gender`, levels = c('Male', 'Female')))
+    
+    # Dataset
+    data3 <- data0 %>% 
+        filter(`Indicator Code` %in% indicators_) %>% 
+        inner_join(indicators_FEMA, by = c("Indicator Code" = "Label")) %>% 
+        group_by(`Gender`, `top_country`, `Label_Index`, `Label_Text`) %>% 
+        summarize(`Value`=mean(`Value`)) %>% 
+        mutate(`Value`=`Value`*ifelse(`Gender`=='Male', -1, 1))
+    
+    # Plot
+    plot_2 <- ggplot(data3) +
+        theme_minimal() +
+        geom_bar(aes(y=`Value`, x=`Label_Index`, fill=`Gender`), stat = "identity", alpha=0.3) +
+        facet_wrap(vars(`top_country`)) +
+        scale_x_discrete(breaks = data3$Label_Index, labels = data3$Label_Text) +
+        scale_y_discrete(breaks = NULL) +
+        coord_flip() +
+        labs(title = "Population pyramid",
+             subtitle = paste0(country_click, " and neighbors countries over time"),
+             caption = "Bars width proportional to the gender total population") +
+        theme(axis.title.y=element_blank(), 
+              axis.title.x=element_blank(), 
+              legend.position = "bottom",
+              panel.grid.major.x = element_blank(),
+              panel.grid.minor.x = element_blank(),
+              panel.grid.major.y = element_blank(),
+              panel.grid.minor.y = element_blank(),
+              axis.line = element_line(),
+              axis.ticks = element_line()) +
+        scale_fill_manual(values=c('blue', 'red'))
+    
+    return(list(plot_1, plot_2))
+}
+
+
 # Spatial ----
 #CRS
 CRSLatLon<-CRS("+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs ") #"+init=epsg:4326"
@@ -345,6 +472,7 @@ country_distance <- function(spdf, country, distance) {
 ui <- fluidPage(
     navbarPage("World Development Indicators", id = "nav",
     tabPanel("Description",
+             tags$head(includeCSS("styles.css")),
              br(),
              h1('Evolution of age ranges'),
              br(),
@@ -422,6 +550,29 @@ ui <- fluidPage(
             ),
             tags$div(id="cite", 'IE, GMBD, Intake 2020, Juan Pedro Bretti Mandarano')
     ),
+    tabPanel("Pyramid",
+            tags$head(includeCSS("styles.css")),
+            div(class = "pyramid_uppper_left", 
+                 absolutePanel(id = "controls", class = "panel panel-default", 
+                               top = "60px", left = "10px", width = 330, fixed = TRUE, draggable = FALSE, bottom = "auto", height = "auto", right = "auto",
+                               h3('Control'),
+                               sliderInput(inputId = "top", label = "Top countries", min = 1, max = 10, value = 5, step = 1, ticks = TRUE))
+            ),
+            div(class = "pyramid_uppper_right", 
+                span('Reference plot from'),
+                tags$a(href="https://en.wikipedia.org/wiki/Demographic_transition#/media/File:Demographic-TransitionOWID.png", "Wikipedia"),
+                span("."),
+                img(src="1920px-Demographic-TransitionOWID.png",height=1450/8,width=1920/8), 
+                style="text-align: right; vertical-align: text-top;"
+            ),
+            div(class = "plot_pyramid_top_div", 
+                plotOutput("plot_pyramid_top", height = '100%'),
+            ),
+            div(class = "plot_pyramid_bottom_div", 
+                plotOutput("plot_pyramid_bottom", height = '100%'),
+            ),
+            tags$div(id="cite", 'IE, GMBD, Intake 2020, Juan Pedro Bretti Mandarano')
+    ),
     tabPanel("Data",
              htmlOutput('selection_text'),
              br(),
@@ -447,7 +598,7 @@ server <- function( input, output, session ){
     }) 
     
     # Check events over the map
-    observeEvent(c(input$map_marker_click, input$distance, input$year_range, input$age_rage), ignoreNULL = FALSE, ignoreInit = TRUE, {
+    observeEvent(c(input$map_marker_click, input$distance, input$year_range, input$age_rage, input$top), ignoreNULL = FALSE, ignoreInit = TRUE, {
         map_ <- input$map_marker_click
         dist_ <- input$distance
         # If there is any input
@@ -468,6 +619,10 @@ server <- function( input, output, session ){
                 # Plot
                 output$plot_top_right_div <- renderPlot(plot_top_right_div(map_$id, input$age_rage, input$year_range[1], input$year_range[2]))
                 output$plot_bottom_right_div <- renderPlot(plot_bottom_right_div(map_$id, country_neig$neig_stid, input$age_rage, input$year_range[1], input$year_range[2]))
+                # Pyramid
+                plot_ <- plot_pyramid(map_$id, country_neig$neig_stid, input$year_range[1], input$year_range[2], input$top)
+                output$plot_pyramid_top <- renderPlot(plot_[[1]])
+                output$plot_pyramid_bottom <- renderPlot(plot_[[2]])
             }
             output$selection_text <- renderUI({
                 str1 <- paste('Listing', '<strong>', country_listing(map_$id, country_neig$neig_stid)$text, '</strong>', 'countries')

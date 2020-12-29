@@ -51,6 +51,46 @@ div.plot_bottom_right_div {
     padding: 20px;
 }
 
+div.pyramid_uppper_left {
+    position: fixed;
+    top: 50px;
+    left: 0;
+    right: 80%;
+    bottom: 0;
+    overflow: hidden;
+    padding: 0;
+}
+
+div.pyramid_uppper_right {
+    position: fixed;
+    top: 50px;
+    left: 20%;
+    right: 10px;
+    bottom: 0;
+    overflow: hidden;
+    padding: 0;
+}
+
+div.plot_pyramid_top_div {
+    position: fixed;
+    top: 240px;
+    left: 0;
+    right: 0;
+    bottom: 40%;
+    overflow: hidden;
+    padding: 20px;
+}
+
+div.plot_pyramid_bottom_div {
+    position: fixed;
+    top: 60%;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    overflow: hidden;
+    padding: 20px;
+}
+
 /* Customize fonts */
 body, label, input, button, select { 
     font-family: 'Helvetica Neue', Helvetica;
