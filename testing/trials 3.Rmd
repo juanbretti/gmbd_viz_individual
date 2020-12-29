@@ -1,0 +1,195 @@
+---
+title: "ASSIGNMENT #4: FINAL PROJECT"
+author: "Juan Pedro Bretti Mandarano"
+date: "JAN/07/2021"
+output:
+  html_document:
+  code_folding: show
+toc: true
+toc_float:
+  collapsed: false
+---
+  
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Start
+
+Set the folder (path) that contains this R file as the working directory
+
+```{r}
+library(tidyverse)
+library(skimr)
+library(ggpmisc)
+library(lubridate)
+library(ggridges)
+library(ggalluvial)
+library(readxl)
+```
+
+## Load data
+
+Read the raw data from the CSV file.
+
+```{r}
+path <- "C:/Users/juanb/OneDrive/GMBD/DATA VISUALIZATION (MBD-EN-BL2020J-1_32R214_380384)/Assignment 4/gmbd_viz_pairs/source/WDI_csv.zip"
+df_data <- read_csv(unz(path, "WDIData.csv"))
+df_country <- read_csv(unz(path, "WDICountry.csv"))
+df_series <- read_csv(unz(path, "WDISeries.csv"))
+df_country_lat_lon <- read_tsv("C:/Users/juanb/OneDrive/GMBD/DATA VISUALIZATION (MBD-EN-BL2020J-1_32R214_380384)/Assignment 4/gmbd_viz_pairs/source/country latitude longitude name.tsv")
+```
+
+```{r}
+age_range_pre <- 'SP.POP'
+age_range <- c("0004", "0509", "1014", "1519", "2024", "2529", "3034", "3539", "4044", "4549", "5054", "5559", "6064", "6569", "7074", "7579", "80UP")
+age_range_gender <- c('FE', 'MA')
+age_range_post <- '5Y'
+indicators_ <- apply(expand.grid(age_range_pre, age_range, age_range_gender, age_range_post), 1, function(x) paste(x, collapse="."))
+
+indicators_ <- c(indicators_, 'SP.DYN.CBRT.IN', 'SP.DYN.CDRT.IN', 'SP.POP.TOTL', 'SP.POP.TOTL.FE.IN', 'SP.POP.TOTL.MA.IN', 'SP.POP.GROW')
+columns_ <- c('Country Name', 'Topic', 'Indicator Name', 'Indicator Code', 'Year', 'Value', 'Region', 'Income Group', 'latitude', 'longitude')
+
+# Prepare data ----
+df_data2 <- df_data %>% 
+    filter(`Indicator Code` %in% indicators_) %>%
+    pivot_longer(starts_with(c('1', '2')), names_to='Year', values_to='Value') %>% 
+    filter(!is.na(`Value`)) %>% 
+    mutate(`Year` = as.numeric(`Year`)) %>% 
+    inner_join(df_country, by='Country Code') %>% 
+    inner_join(df_country_lat_lon, by=c('2-alpha code'='country')) %>% 
+    inner_join(df_series, by=c('Indicator Code'='Series Code')) %>% 
+    rename(`Indicator Name`='Indicator Name.x') %>% 
+    select(!!columns_)
+```
+
+
+https://en.wikipedia.org/wiki/Demographic_transition#/media/File:Demographic-TransitionOWID.png
+
+```{r}
+# Top
+top_ <- 3
+country_base_ <- 'Uruguay'
+country_list_ <- c('United States', 'Colombia', 'Uruguay', 'China', 'Paraguay')
+country_list_ <- c(country_base_, country_list_)
+
+df_top <- df_data2 %>% 
+  filter(`Country Name` %in% country_list_) %>% 
+  filter(`Indicator Code` == 'SP.POP.TOTL') %>% 
+  group_by(`Country Name`) %>% 
+  summarise(Total=sum(`Value`)) %>% 
+  top_n(top_, Total) %>%
+  arrange(desc(Total)) %>% 
+  pull(`Country Name`)
+
+df_top <- unique(c(country_base_, df_top))
+
+```
+
+
+```{r}
+
+data0 <- df_data2 %>% 
+  filter(`Country Name` %in% country_list_) %>% 
+  mutate(top_country=ifelse(`Country Name` %in% df_top, `Country Name`, 'Rest of neighboards')) %>% 
+  mutate(top_country=factor(top_country, levels=c(df_top, 'Rest of neighboards')))
+
+data1 <- data0 %>% 
+  filter(`Indicator Code` %in% c('SP.DYN.CBRT.IN', 'SP.DYN.CDRT.IN')) %>% 
+  group_by(`Year`, `Indicator Code`, `top_country`) %>% 
+  summarise(`Value`=mean(`Value`))
+
+data11 <- data1 %>% 
+  pivot_wider(names_from = `Indicator Code`, values_from=`Value`)
+
+data2 <- data0 %>% 
+  filter(`Indicator Code` == 'SP.POP.TOTL') %>%
+  group_by(`Year`, `Indicator Code`, `top_country`) %>% 
+  summarise(`Value`=mean(`Value`))
+
+coeff <- max(data2$Value)/max(data1$Value)/1e6
+
+ggplot() +
+  geom_area(data=data2, aes(x=`Year`, y=`Value`/coeff/1e6, fill=`Indicator Code`), size=2, alpha = 0.4) +
+  geom_line(data=data1, aes(x=`Year`, y=`Value`, color=`Indicator Code`), size=1, alpha = 0.6) +
+  geom_ribbon(data=data11, aes(x=`Year`, y=`SP.DYN.CBRT.IN`, ymin=`SP.DYN.CDRT.IN`, ymax=`SP.DYN.CBRT.IN`), fill="blue", alpha=0.2) +
+  scale_y_continuous(
+    name = "Ratio [%]",
+    labels = scales::percent_format(accuracy = 1L, scale = 1),
+    sec.axis = sec_axis(~.*coeff, name="Population [Million]")
+  ) +
+  facet_wrap(vars(`top_country`)) +
+  theme_minimal() +
+  labs(title = "Birth and death rates",
+       subtitle = paste0(country_base_, " and neighbors countries over time")) +
+  theme(axis.title.y=element_blank(), 
+        legend.position = "bottom",
+        panel.grid.major.y = element_blank(),
+        panel.grid.minor.y = element_blank(),
+        axis.line = element_line(),
+        axis.ticks = element_line()) +
+  scale_color_manual(values=c('darkgreen', 'darkblue'), name =element_blank(), labels = c("Birth rate (per 1,000 people)", "Death rate (per 1,000 people)")) +
+  scale_fill_manual(values=c('orange'), name=element_blank(), labels="Total population [Million]")
+```
+
+
+
+```{r}
+
+# Indicators
+age_range_pre <- 'SP.POP'
+age_range <- data.frame(Number = c("0004", "0509", "1014", "1519", "2024", "2529", "3034", "3539", "4044", "4549", "5054", "5559", "6064", "6569", "7074", "7579", "80UP"),
+                        Axis_Label = c("", "", "", "15 years", "", "", "", "", "", "", "", "55 years", "", "", "", "", "80 and up"))
+age_range_gender <- c('FE', 'MA')
+age_range_post <- '5Y'
+indicators_ <- apply(expand.grid(age_range_pre, age_range$Number, age_range_gender, age_range_post), 1, function(x) paste(x, collapse="."))
+
+indicators_FE <- data.frame(Label=apply(expand.grid(age_range_pre, age_range$Number, 'FE', age_range_post), 1, function(x) paste(x, collapse=".")),
+                            Label_Index=factor(age_range$Number, levels=age_range$Number),
+                            Label_Text=age_range$Axis_Label,
+                            Gender='Female')
+indicators_MA <- data.frame(Label=apply(expand.grid(age_range_pre, age_range$Number, 'MA', age_range_post), 1, function(x) paste(x, collapse=".")),
+                            Label_Index=factor(age_range$Number, levels=age_range$Number),
+                            Label_Text=age_range$Axis_Label,
+                            Gender='Male')
+
+indicators_FEMA <- bind_rows(indicators_FE, indicators_MA) %>% 
+  mutate(`Gender`=factor(`Gender`, levels = c('Male', 'Female')))
+
+# Dataset
+data3 <- data0 %>% 
+  filter(`Indicator Code` %in% indicators_) %>% 
+  inner_join(indicators_FEMA, by = c("Indicator Code" = "Label")) %>% 
+  group_by(`Gender`, `top_country`, `Label_Index`, `Label_Text`) %>% 
+  summarize(`Value`=mean(`Value`)) %>% 
+  mutate(`Value`=`Value`*ifelse(`Gender`=='Male', -1, 1))
+
+# Plot
+ggplot(data3) +
+  theme_minimal() +
+  geom_bar(aes(y=`Value`, x=`Label_Index`, fill=`Gender`), stat = "identity", alpha=0.3) +
+  facet_wrap(vars(`top_country`)) +
+  scale_x_discrete(breaks = data3$Label_Index, labels = data3$Label_Text) +
+  scale_y_discrete(breaks = NULL) +
+  coord_flip() +
+  labs(title = "Population pyramid",
+       subtitle = paste0(country_base_, " and neighbors countries over time"),
+       caption = "Bars width proportional to the gender total population") +
+  theme(axis.title.y=element_blank(), 
+        axis.title.x=element_blank(), 
+        legend.position = "bottom",
+        panel.grid.major.x = element_blank(),
+        panel.grid.minor.x = element_blank(),
+        panel.grid.major.y = element_blank(),
+        panel.grid.minor.y = element_blank(),
+        axis.line = element_line(),
+        axis.ticks = element_line()) +
+  scale_fill_manual(values=c('blue', 'red'))
+```
+
+
+
+
+
+
+

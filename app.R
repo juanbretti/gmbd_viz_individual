@@ -352,6 +352,8 @@ ui <- fluidPage(
              br(),
              span('Compares a base country with the closest ones.'),
              br(),
+             span('This study shows how the number of births has decreased over time. In contrast, the longevity has been increased. It could be an issue for future retirement programs.'),
+             br(),
              br(),
              h3('Usage'),
              span('Use the named tags at the very top of the page.'),
