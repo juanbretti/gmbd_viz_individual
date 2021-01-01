@@ -474,7 +474,7 @@ ui <- fluidPage(
     tabPanel("Description",
              tags$head(includeCSS("styles.css")),
              br(),
-             h1('Evolution of age ranges'),
+             h1('Evolution of age ranges and transitions'),
              br(),
              span('The following study allows the user to analysis the'),
              tags$b('evolution of age ranges'),
