@@ -5,9 +5,9 @@ account: juanbretti
 server: shinyapps.io
 hostUrl: https://api.shinyapps.io/v1
 appId: 3433084
-bundleId: 4036580
+bundleId: 4040045
 url: https://juanbretti.shinyapps.io/gmbd_viz_final/
-when: 1609190709.50228
+when: 1609277031.17371
 asMultiple: FALSE
 asStatic: FALSE
 ignoredFiles: .RData|source/others/countries.csv ?-? Dataset Publishing Language ?-? Google Developers.url|source/others/WDIEXCEL_v2.xlsx|source/others/World Development Indicators (WDI) - Data Catalog.url|testing
