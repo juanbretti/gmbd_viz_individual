@@ -21,6 +21,14 @@ div.map_uppper {
     font-size: 12px;
 }
 
+#source {
+    position: absolute;
+    bottom: 10px;
+    right: 10px;
+    font-size: 12px;
+    text-align: right;
+}
+
 div.plot_top_right_div {
     position: fixed;
     top: 50px;
@@ -46,7 +54,7 @@ div.plot_bottom_right_div {
     top: 50%;
     left: 600px;
     right: 0;
-    bottom: 0;
+    bottom: 10px;
     overflow: hidden;
     padding: 20px;
 }
@@ -86,7 +94,7 @@ div.plot_pyramid_bottom_div {
     top: 60%;
     left: 0;
     right: 0;
-    bottom: 0;
+    bottom: 10px;
     overflow: hidden;
     padding: 20px;
 }

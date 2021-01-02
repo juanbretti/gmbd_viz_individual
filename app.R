@@ -218,8 +218,7 @@ plot_bottom_right_div <- function(country_clicked, country_neig, age_rage, range
                                                breaks = data_last[, 'Value'][[1]],
                                                labels = data_last$`Label`)) +
         labs(title = paste0("Age range for ", plot_title),
-             subtitle = paste0(country_base, " and neighbors countries over time"),
-             caption = "World Development Indicators (WDI): Data Catalog") +
+             subtitle = paste0(country_base, " and neighbors countries over time")) +
         theme(axis.title.y=element_blank(), 
               axis.text.y = element_text(colour = data_last$`Color Axis`),
               legend.position = "none",
@@ -263,7 +262,7 @@ plot_bottom_left_div <- function(country_click, country_neig, range_min, range_m
         scale_y_continuous(labels = scales::percent_format(accuracy = 1L, scale = 1)) +
         scale_x_continuous(labels = scales::percent_format(accuracy = 1L, scale = 1)) +
         labs(title = "Evolution of ages over time ",
-             subtitle = "Year: {round(frame_time, 0)}",
+             subtitle = paste0("Year: {round(frame_time, 0)}, ", country_click, " and neighbors countries over time"),
              caption = "Point size proportional to total population",
              x = "0 to 14 years", 
              y = "65 and up years") +
@@ -501,7 +500,9 @@ ui <- fluidPage(
              br(),
              span('Use the filters on the right to limit the search and output data.'),
              br(),
-             span('The first generation of the plots, takes some computing power and time. Please be patience for the'),
+             span('The first generation of the plots, takes some computing power and time.'),
+             span('Please be patience', style = 'color:red'),
+             span('for the'),
              tags$b("map"),
              span(","),
              tags$b("area plot"),
@@ -547,6 +548,11 @@ ui <- fluidPage(
              span("Demographic transition. More at"),
              tags$a(href="https://en.wikipedia.org/wiki/Demographic_transition", "Wikipedia"),
              span('.'),
+             br(),
+             br(),
+             span("Dataset Publishing Language. More at"),
+             tags$a(href="https://developers.google.com/public-data/docs/canonical/countries_csv", "Google Developers"),
+             span('.'),
              tags$div(id="cite", 'IE, GMBD, Intake 2020, Juan Pedro Bretti Mandarano')
     ),
     tabPanel("Map",
@@ -569,7 +575,8 @@ ui <- fluidPage(
             div(class = "plot_bottom_right_div", 
                 plotOutput("plot_bottom_right_div", height = '100%')
             ),
-            tags$div(id="cite", 'IE, GMBD, Intake 2020, Juan Pedro Bretti Mandarano')
+            tags$div(id="cite", 'IE, GMBD, Intake 2020, Juan Pedro Bretti Mandarano'),
+            tags$div(id="source", 'Source: World Development Indicators, and others.')
     ),
     tabPanel("Demographic transition",
             tags$head(includeCSS("styles.css")),
@@ -592,13 +599,15 @@ ui <- fluidPage(
             div(class = "plot_pyramid_bottom_div", 
                 plotOutput("plot_pyramid_bottom", height = '100%'),
             ),
-            tags$div(id="cite", 'IE, GMBD, Intake 2020, Juan Pedro Bretti Mandarano')
+            tags$div(id="cite", 'IE, GMBD, Intake 2020, Juan Pedro Bretti Mandarano'),
+            tags$div(id="source", 'Source: World Development Indicators, and others.')
     ),
     tabPanel("Data",
              htmlOutput('selection_text'),
              br(),
              DT::dataTableOutput(outputId = "country_table"),
-             tags$div(id="cite", 'IE, GMBD, Intake 2020, Juan Pedro Bretti Mandarano')
+             tags$div(id="cite", 'IE, GMBD, Intake 2020, Juan Pedro Bretti Mandarano'),
+             tags$div(id="source", 'Source: World Development Indicators, and others.')
     )
 ))
 
