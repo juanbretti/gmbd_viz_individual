@@ -21,6 +21,14 @@ div.map_uppper {
     font-size: 12px;
 }
 
+#cite_top {
+    position: absolute;
+    top: 60px;
+    right: 10px;
+    font-size: 12px;
+    text-align: right;
+}
+
 #source {
     position: absolute;
     bottom: 10px;
